@@ -1,0 +1,28 @@
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logo_bg_grad" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0047AB" />
+      <stop offset="0.5" stop-color="#003A8C" />
+      <stop offset="1" stop-color="#071A3F" />
+    </linearGradient>
+    <linearGradient id="logo_grad_1" x1="4" y1="4" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22C55E" />
+      <stop offset="1" stop-color="#0047AB" />
+    </linearGradient>
+    <linearGradient id="logo_grad_2" x1="9" y1="9" x2="27" y2="27" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" />
+      <stop offset="0.6" stop-color="#EAF1FF" />
+      <stop offset="1" stop-color="#22C55E" />
+    </linearGradient>
+  </defs>
+
+  <rect width="36" height="36" rx="8" fill="url(#logo_bg_grad)" />
+  <rect width="36" height="36" rx="8" stroke="white" stroke-opacity="0.2" stroke-width="1" />
+
+  <!-- Scale by 24/36 = 0.666 and translate by 6 to account for p-1.5 (which is 6px padding on a 36px box) -->
+  <g transform="translate(6, 6) scale(0.6666)">
+    <path d="M18 4L32 18L18 32L4 18L18 4Z" fill="url(#logo_grad_1)" opacity="0.25" />
+    <path d="M11 9H25C26.1 9 27 9.9 27 11V12C27 12.6 26.6 13 26 13H15V16.5H23C23.6 16.5 24 16.9 24 17.5V18.5C24 19.1 23.6 19.5 23 19.5H15V23H26C26.6 23 27 23.4 27 24V25C27 26.1 26.1 27 25 27H11C9.9 27 9 26.1 9 25V11C9 9.9 9.9 9H11Z" fill="url(#logo_grad_2)" />
+    <circle cx="27" cy="18" r="2.5" fill="#22C55E" />
+  </g>
+</svg>

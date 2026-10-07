@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cobalt-50: #eaf1ff;
+  --color-cobalt-100: #d6e4ff;
+  --color-cobalt-200: #adc8ff;
+  --color-cobalt-500: #1d6bf3;
+  --color-cobalt-600: #0047ab;
+  --color-cobalt-700: #003a8c;
+  --color-cobalt-800: #002c6b;
+  --color-navy-900: #071a3f;
+  --color-navy-950: #040e24;
+  --color-green-400: #4ade80;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-green-700: #15803d;
+  --color-bg: #f4f7fc;
+  --color-surface: #ffffff;
+  --color-border: #e3e9f4;
+  --color-app-text: #0b1b3a;
+  --color-muted: #5b6b8c;
+  --color-warn: #f59e0b;
+  --color-danger: #ef4444;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg);
+  color: var(--color-app-text);
+  overflow-x: hidden;
+}
+
+/* Glassmorphism utilities */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(227, 233, 244, 0.8);
+}
+
+.glass-dark {
+  background: rgba(7, 26, 63, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hero-gradient {
+  background: linear-gradient(135deg, #071A3F 0%, #003A8C 55%, #0047AB 100%);
+}
+
+.card-shadow {
+  box-shadow: 0 4px 20px -2px rgba(11, 27, 58, 0.05), 0 2px 6px -1px rgba(11, 27, 58, 0.03);
+}
+
+.card-hover {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -4px rgba(11, 27, 58, 0.08), 0 4px 10px -2px rgba(11, 27, 58, 0.04);
+}
