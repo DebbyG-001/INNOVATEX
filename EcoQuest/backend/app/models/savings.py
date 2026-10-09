@@ -10,8 +10,8 @@ class SavingsPlan(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(150), nullable=False)
-    target_amount = Column(Float, nullable=False)
-    current_amount = Column(Float, default=0.0)
+    target_amount = Column(Integer, nullable=False)
+    current_amount = Column(Integer, default=0)
     duration_months = Column(Integer, default=6)  # 1, 2, 3, 4, 6, 9, 12, 18, 24, 36
     bank = Column(String(100), default="GTBank")  # Nigerian bank selected
     status = Column(String(30), default="active")

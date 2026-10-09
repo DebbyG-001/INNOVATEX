@@ -1,0 +1,987 @@
+<USER_REQUEST>
+You are taking over development of my existing EcoQuest project.
+
+I have already had another AI agent audit the codebase. I do NOT want another high-level audit unless you discover that the previous report is factually wrong.
+
+Your job is to IMPLEMENT the architecture improvements carefully and incrementally.
+
+IMPORTANT:
+
+- Do NOT rewrite EcoQuest from scratch.
+- Do NOT replace Next.js.
+- Do NOT replace PostgreSQL.
+- Do NOT replace npm.
+- Do NOT remove existing functionality.
+- Do NOT redesign the application unnecessarily.
+- Do NOT create fake data.
+- Do NOT make destructive database changes without checking the existing schema/migrations first.
+- Do NOT upgrade dependencies randomly.
+- Do NOT run `npm audit fix --force`.
+- Do NOT blindly implement every recommendation if the actual codebase shows a better/simpler solution.
+- Preserve the existing EcoQuest navy/lime design.
+- Preserve existing onboarding and placement logic.
+- Preserve existing banking functionality.
+- Preserve transfers, bills, goals, missions and gamification.
+
+The goal is to improve the EXISTING application, not create a new one.
+
+==================================================
+CURRENT ARCHITECTURE AUDIT
+==================================================
+
+The previous audit found the following target architecture:
+
+Browser / Next.js UI
+        ↓
+HTTP / Server Action Boundary
+        ↓
+Server-side authentication
+        ↓
+Validation + authorization
+        ↓
+Business/domain services
+        ↓
+PostgreSQL data access
+        ↓
+PostgreSQL
+
+The audit identified these major issues:
+
+CRITICAL:
+1. Parent `Documents/package-lock.json` is causing incorrect Next.js workspace-root detection.
+2. `.next` artifacts appear corrupted/inconsistent.
+3. Client-supplied user IDs may be trusted instead of deriving identity from a verified server session.
+4. Financial values may use floating-point numbers.
+5. Financial mutations may not use atomic PostgreSQL transactions.
+
+HIGH:
+6. localStorage is being used for persistent financial/gamification state.
+7. Financial operations lack idempotency protection.
+8. Gamification rewards can potentially be triggered directly from the client.
+
+MEDIUM:
+9. Dashboard uses fragmented client-side requests.
+10. Excessive `"use client"` usage.
+11. Database queries may lack appropriate indexes.
+12. Database connection handling may be inefficient.
+
+The proposed roadmap is:
+
+PHASE 1 — Toolchain stability
+PHASE 2 — Core architecture/utilities
+PHASE 3 — Database hardening
+PHASE 4 — Authentication/security
+PHASE 5 — Atomic financial ledger
+PHASE 6 — Bills
+PHASE 7 — Goals
+PHASE 8 — Gamification
+PHASE 9 — Dashboard/RSC performance
+PHASE 10 — UI polish/testing
+
+==================================================
+PHASE 0 — VERIFY THE EXISTING CODE
+==================================================
+
+Before modifying anything, inspect the relevant existing files for the phase you are working on.
+
+Do not assume the audit is perfectly accurate.
+
+If the audit says something is wrong, verify it against the actual code.
+
+If the audit is correct, implement the fix.
+
+If the audit is incorrect, explain why before making the alternative change.
+
+==================================================
+PHASE 1 — FIX NEXT.JS DEVELOPMENT ENVIRONMENT
+==================================================
+
+First solve the current development-server problem.
+
+Known errors include:
+
+- `SegmentViewNode` missing from React Client Manifest
+- `Cannot find module './611.js'`
+- webpack runtime errors
+- `_app` undefined
+- extremely slow compilation
+- incorrect workspace-root warning
+
+There are two lockfiles:
+
+C:\Users\Joseph Dania\Documents\package-lock.json
+
+and:
+
+C:\Users\Joseph Dania\Documents\INNOVATEX\EcoQuest\package-lock.json
+
+The EcoQuest lockfile is the authoritative one.
+
+First determine whether the parent Documents lockfile belongs to another active npm project.
+
+Do NOT delete it blindly.
+
+If it is an accidental stray lockfile, remove/quarantine it safely.
+
+Then clean the EcoQuest development artifacts.
+
+The intended cleanup is:
+
+- `.next`
+- stale/inconsistent dependency artifacts if actually necessary
+
+Do NOT unnecessarily reinstall everything if deleting `.next` resolves the problem.
+
+Then verify:
+
+npm run dev
+
+The development server should not repeatedly produce:
+
+- SegmentViewNode errors
+- missing webpack chunks
+- `_app` errors
+- unexplained 500 responses
+- 60–80 second compilation loops
+
+Do not move to major application architecture changes until the development environment is stable.
+
+==================================================
+PHASE 2 — DATABASE CONNECTION FOUNDATION
+==================================================
+
+Inspect the current PostgreSQL connection implementation.
+
+If the project creates a new Pool/client repeatedly inside route handlers, replace that with an appropriate singleton/pooling pattern for Next.js.
+
+Use the existing database library if possible.
+
+Do not add a new ORM/database library unless there is a strong reason.
+
+Make the database layer reusable.
+
+Keep credentials server-only.
+
+==================================================
+PHASE 3 — MONEY REPRESENTATION
+==================================================
+
+Inspect how money is currently represented.
+
+Do NOT blindly migrate the entire database.
+
+Determine the safest migration strategy based on the current schema.
+
+The target should avoid floating-point financial calculations.
+
+For NGN, a sensible representation is integer Kobo.
+
+For example:
+
+₦100,000
+=
+10,000,000 Kobo
+
+Financial calculations should use integer-safe arithmetic.
+
+If the existing schema already uses a safe NUMERIC/DECIMAL representation correctly, do not migrate unnecessarily.
+
+Create clear conversion utilities if needed.
+
+==================================================
+PHASE 4 — AUTHENTICATION AND USER ISOLATION
+==================================================
+
+This is one of the highest-priority changes.
+
+Never trust:
+
+userId
+
+coming from:
+
+- request body
+- query parameters
+- client state
+- localStorage
+
+for protected financial operations.
+
+Derive the authenticated user from the existing server-side authentication/session mechanism.
+
+Create a centralized authentication resolver if the project does not already have one.
+
+Every protected resource must enforce ownership.
+
+For example:
+
+SELECT *
+FROM bills
+WHERE id = $billId
+AND user_id = $authenticatedUserId;
+
+The same principle applies to:
+
+- accounts
+- transactions
+- transfers
+- bills
+- goals
+- missions
+- gamification
+- onboarding/placement
+
+A user must never be able to manipulate another user's data by changing an ID.
+
+==================================================
+PHASE 5 — ATOMIC FINANCIAL OPERATIONS
+==================================================
+
+This is extremely important.
+
+Financial mutations must be atomic.
+
+For:
+
+- add money
+- transfer
+- bill payment
+- goal contribution
+
+use PostgreSQL transactions where appropriate.
+
+Conceptually:
+
+BEGIN
+
+validate
+authenticate
+authorize
+
+lock relevant account row
+
+check balance
+
+update balance
+
+create transaction/ledger record
+
+update related domain state
+
+update gamification/event state
+
+COMMIT
+
+If anything fails:
+
+ROLLBACK
+
+Prevent:
+
+- double spending
+- partial updates
+- balance inconsistencies
+- duplicate charges
+- duplicate rewards
+
+Use row-level locking where required.
+
+Do not introduce a complicated financial system if the existing demo only requires a simple reliable ledger.
+
+==================================================
+PHASE 6 — REMOVE FAKE DATA
+==================================================
+
+This is a core product requirement.
+
+New users should NOT automatically receive fake:
+
+- balance
+- transactions
+- bills
+- goals
+- mission progress
+- XP
+- streaks
+
+Users must create their own state through actual actions.
+
+New user:
+
+balance = 0
+
+transactions = empty
+
+bills = empty
+
+goals = empty
+
+progress = based on actual actions
+
+Use useful empty states in the UI.
+
+==================================================
+PHASE 7 — ADD MONEY
+==================================================
+
+The app is a banking DEMO.
+
+Users need to be able to add simulated money.
+
+This is NOT a real payment gateway.
+
+When the user adds money:
+
+1. Authenticate user
+2. Validate amount
+3. Update account
+4. Create transaction/ledger record
+5. Trigger appropriate gamification event
+6. Commit atomically
+7. Return updated state
+
+Do not simply update a React variable.
+
+==================================================
+PHASE 8 — TRANSFERS
+==================================================
+
+Preserve existing transfer functionality.
+
+If it is currently broken or missing from the dashboard, restore it.
+
+Transfers should:
+
+- authenticate sender
+- validate recipient
+- validate amount
+- verify sufficient balance
+- verify recipient
+- update sender/receiver atomically
+- create appropriate transaction records
+- prevent duplicate transfers
+- maintain an audit trail
+
+Do not remove this feature.
+
+==================================================
+PHASE 9 — BILLS
+==================================================
+
+Bills must be user-created.
+
+Do NOT pre-populate new users with fake bills.
+
+Categories should remain manageable:
+
+- Electricity
+- Airtime/Data
+- Internet
+- Cable TV
+- Water
+- Other
+
+A bill should contain appropriate:
+
+- title
+- category
+- amount
+- due date
+- recurrence
+- status
+- user ownership
+
+Support:
+
+- one-time bills
+- recurring bills
+
+==================================================
+PHASE 10 — BILL PAYMENT
+==================================================
+
+Paying a bill must be a real backend mutation.
+
+Flow:
+
+authenticate
+↓
+validate
+↓
+verify ownership
+↓
+check balance
+↓
+lock account
+↓
+deduct balance
+↓
+create transaction
+↓
+mark bill paid
+↓
+trigger gamification
+↓
+create next recurring bill if necessary
+↓
+commit
+
+Prevent duplicate payment.
+
+If the payment request is retried, it must not charge the user twice.
+
+==================================================
+PHASE 11 — GOALS
+==================================================
+
+Users create their own goals.
+
+Goal should contain:
+
+- title
+- target amount
+- saved amount
+- deadline
+- status
+- user ownership
+
+Contributions must be real financial operations.
+
+Example:
+
+Balance:
+₦100,000
+
+Goal:
+₦500,000
+
+Contribution:
+₦50,000
+
+Result:
+
+Balance:
+₦50,000
+
+Goal saved:
+₦50,000
+
+Progress:
+10%
+
+Transaction:
+created
+
+Gamification:
+updated if appropriate
+
+All relevant changes should happen atomically.
+
+==================================================
+PHASE 12 — ONBOARDING AND PLACEMENT
+==================================================
+
+Do NOT destroy the current onboarding system.
+
+Preserve the existing placement/segmentation logic.
+
+The onboarding result must:
+
+- belong to the correct user
+- persist in PostgreSQL
+- survive refresh
+- survive logout/login
+- be available to the dashboard
+
+If goals can be created during onboarding, those goals must be real database records.
+
+==================================================
+PHASE 13 — GAMIFICATION
+==================================================
+
+Gamification must be driven by actual backend actions.
+
+Do NOT let the frontend simply say:
+
+"User completed mission."
+
+Instead:
+
+successful backend action
+↓
+domain event/action
+↓
+gamification service
+↓
+evaluate missions
+↓
+award XP
+↓
+update streaks/badges where appropriate
+
+Examples:
+
+add money
+create goal
+contribute to goal
+create bill
+pay bill
+make transfer
+
+All should be capable of triggering appropriate gamification.
+
+Prevent duplicate XP/rewards when requests are retried.
+
+==================================================
+PHASE 14 — MISSIONS
+==================================================
+
+Missions should be dynamic.
+
+Do not show fake completed missions.
+
+Examples:
+
+Add ₦10,000
+
+Create your first goal
+
+Contribute ₦5,000
+
+Pay an electricity bill
+
+Make your first transfer
+
+Mission progress must come from actual stored activity.
+
+==================================================
+PHASE 15 — DASHBOARD PERFORMANCE
+==================================================
+
+The current dashboard reportedly has fragmented requests like:
+
+GET /api/user
+GET /api/balance
+GET /api/transactions
+GET /api/bills
+GET /api/goals
+
+Review the actual implementation.
+
+Do not blindly combine everything into one enormous endpoint.
+
+Instead, determine the best architecture.
+
+Where appropriate:
+
+Server Component
+↓
+dashboard service
+↓
+parallel database queries
+↓
+dashboard view model
+
+Keep interactive elements as Client Components.
+
+Reduce unnecessary:
+
+- useEffect fetches
+- duplicate API calls
+- waterfalls
+- global state
+- re-renders
+
+Do not optimize prematurely.
+
+==================================================
+PHASE 16 — REACT/NEXT.JS PERFORMANCE
+==================================================
+
+Review excessive `"use client"` usage.
+
+Move static/server-renderable UI to Server Components where appropriate.
+
+Keep client components for:
+
+- forms
+- modals
+- interactive controls
+- animations requiring browser APIs
+- local interaction state
+
+Do not convert everything to Server Components just because it is theoretically possible.
+
+Avoid unnecessary:
+
+- useEffect
+- useMemo
+- useCallback
+- context
+- global state
+
+Only optimize identified bottlenecks.
+
+==================================================
+PHASE 17 — DATABASE PERFORMANCE
+==================================================
+
+Inspect real SQL queries.
+
+Look for:
+
+- N+1 queries
+- repeated queries
+- SELECT *
+- missing indexes
+- unnecessary joins
+- repeated dashboard queries
+
+Consider indexes for common patterns such as:
+
+(user_id, created_at)
+
+(user_id, status)
+
+but only add indexes justified by actual access patterns.
+
+==================================================
+PHASE 18 — API DESIGN
+==================================================
+
+Review existing APIs.
+
+Prefer consistent resource-oriented APIs.
+
+Potential structure:
+
+/api/dashboard
+/api/account
+/api/transactions
+/api/transfers
+/api/bills
+/api/bills/[id]
+/api/bills/[id]/pay
+/api/goals
+/api/goals/[id]/contribute
+/api/missions
+/api/gamification
+
+Do NOT create duplicate endpoints if equivalent functionality already exists.
+
+Keep the current architecture if it is already reasonable.
+
+==================================================
+PHASE 19 — ERROR HANDLING
+==================================================
+
+Implement consistent error handling.
+
+Distinguish:
+
+401 Unauthorized
+403 Forbidden
+404 Not Found
+400 Validation Error
+409 Conflict
+422 Business Rule Error
+500 Internal Error
+
+For example:
+
+Insufficient balance
+
+should produce a useful user-facing error rather than a generic database exception.
+
+Do not expose database internals.
+
+==================================================
+PHASE 20 — UI
+==================================================
+
+Preserve the existing EcoQuest UI.
+
+Do not redesign the entire application.
+
+Preserve:
+
+- navy/lime theme
+- onboarding
+- dashboard
+- banking sections
+- transfers
+- bills
+- goals
+- missions
+- gamification
+
+Restore major sections to the dashboard if they were accidentally removed.
+
+==================================================
+PHASE 21 — WELCOME ANIMATION
+==================================================
+
+Preserve the requested flow:
+
+EcoQuest logo
+↓
+subtle animation
+↓
+"Welcome back"
+↓
+dashboard
+
+Keep it lightweight.
+
+Support:
+
+prefers-reduced-motion
+
+Do not add a large animation library just for this.
+
+==================================================
+PHASE 22 — FAVICON/BRANDING
+==================================================
+
+Use the existing EcoQuest logo for:
+
+- favicon
+- browser tab
+- appropriate header/branding areas
+- metadata where appropriate
+
+==================================================
+PHASE 23 — TESTING
+==================================================
+
+After implementation, test these exact flows.
+
+1. New user
+
+Balance = ₦0
+No fake transactions
+No fake bills
+No fake goals
+
+2. Add ₦100,000
+
+Balance = ₦100,000
+Transaction created
+
+3. Create goal
+
+Laptop
+Target = ₦500,000
+
+Saved = ₦0
+
+4. Contribute ₦50,000
+
+Balance = ₦50,000
+Goal saved = ₦50,000
+Progress = 10%
+
+5. Create monthly electricity bill
+
+₦15,000
+
+6. Pay bill
+
+Balance decreases by ₦15,000
+Transaction created
+Bill becomes paid
+Gamification updates
+Next recurring bill appears exactly once
+
+7. Refresh
+
+All data remains correct.
+
+8. Logout/login
+
+All data remains correct.
+
+9. Second user
+
+Cannot see or modify first user's:
+
+- balance
+- transactions
+- bills
+- goals
+- missions
+- gamification
+
+10. Retry mutation
+
+No duplicate financial transaction.
+
+No duplicate XP.
+
+==================================================
+PHASE 24 — WORK IN SMALL COMMITS/PHASES
+==================================================
+
+Do NOT modify the entire application at once.
+
+Work in this order:
+
+PHASE 1
+Development/toolchain stability
+
+PHASE 2
+Database connection and shared infrastructure
+
+PHASE 3
+Authentication/authorization
+
+PHASE 4
+Financial operations
+
+PHASE 5
+Bills
+
+PHASE 6
+Goals
+
+PHASE 7
+Gamification/missions
+
+PHASE 8
+Dashboard performance
+
+PHASE 9
+UI polish
+
+PHASE 10
+Testing
+
+After each phase:
+
+- run TypeScript checks
+- run lint
+- run relevant tests
+- run npm run dev
+- verify no new runtime errors
+- inspect git diff
+
+==================================================
+25. CRITICAL SAFETY RULE
+==================================================
+
+Before modifying the database schema:
+
+1. Inspect existing schema.
+2. Inspect existing migrations.
+3. Determine whether the database is currently used by the deployed app.
+4. Do not destroy existing user data.
+5. Prefer additive migrations.
+6. Never use destructive DROP commands unless explicitly justified and confirmed.
+
+If a migration could destroy existing data, STOP and explain the risk.
+
+==================================================
+26. DO NOT OVERENGINEER
+==================================================
+
+EcoQuest is an MVP/demo.
+
+Do not introduce:
+
+- microservices
+- Redis
+- Kafka
+- message brokers
+- complex event infrastructure
+- unnecessary ORM migrations
+- unnecessary state-management libraries
+
+unless the existing codebase genuinely requires them.
+
+Prefer a clean modular monolith.
+
+==================================================
+27. FINAL QUALITY STANDARD
+==================================================
+
+The final system should have this flow:
+
+USER
+↓
+NEXT.JS UI
+↓
+SERVER/API
+↓
+AUTHENTICATION
+↓
+VALIDATION
+↓
+BUSINESS SERVICE
+↓
+POSTGRESQL TRANSACTION
+↓
+PERSISTED STATE
+↓
+RESPONSE
+↓
+UI UPDATE
+
+Financial state must never depend on frontend-only variables.
+
+Gamification must never depend solely on frontend claims.
+
+User identity must never depend on client-provided user IDs.
+
+Money must not depend on unsafe floating-point arithmetic.
+
+Financial mutations must be atomic.
+
+==================================================
+28. HOW TO START
+==================================================
+
+START WITH PHASE 1 ONLY.
+
+Do not implement every phase immediately.
+
+First:
+
+1. Inspect the current project.
+2. Verify the parent lockfile situation.
+3. Inspect package.json/package-lock.json.
+4. Inspect next.config.
+5. Fix the current Next.js development/build issue.
+6. Clear only the necessary corrupted artifacts.
+7. Run the development server.
+8. Verify that the app can compile and load normally.
+
+Then STOP.
+
+Report:
+
+- what you found
+- what you changed
+- why you changed it
+- exact files changed
+- commands executed
+- whether the dev server now works
+- any remaining errors
+
+DO NOT proceed to Phase 2 until Phase 1 is stable.
+
+The priority is:
+
+STABILITY → SECURITY → DATA INTEGRITY → FUNCTIONALITY → PERFORMANCE → UI POLISH.
+
+Do not sacrifice data correctness for speed.
+
+Do not sacrifice existing functionality for architectural purity.
+
+Start now.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-10-08T22:47:23+01:00.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Gemini 3.1 Pro (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>

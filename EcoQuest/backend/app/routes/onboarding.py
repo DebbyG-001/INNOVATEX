@@ -51,6 +51,8 @@ def submit_onboarding(
     user.income_stability = data.income_stability
     user.monthly_target = data.monthly_target
     user.has_emergency_savings = data.has_emergency_savings
+    user.active_accounts_count = data.active_accounts
+    user.digital_usage = "moderate"  # Defaulting or computing if needed
     user.customer_segment = seg_code
     user.customer_segment_name = seg_name
     user.financial_tier = tier_code

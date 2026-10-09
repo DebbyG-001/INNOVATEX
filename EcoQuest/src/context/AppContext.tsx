@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { api } from '../lib/api';
+import * as api from '../app/actions/api';
 import {
   calculateLevel,
   calculateRequiredMonthly,
@@ -10,6 +10,7 @@ import {
   determineSegment,
   generateFirstMission,
 } from '../lib/rulesEngine';
+import { executeAtomicTransfer } from '../app/actions/transfer';
 import {
   Account,
   Achievement,
@@ -25,7 +26,15 @@ import {
   Transaction,
   UserAccount,
   UserProfile,
+  Bill,
+  Budget,
 } from '../types';
+
+export interface ToastMessage {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info' | 'reward';
+}
 
 interface AppContextType {
   // Authentication & Flow
@@ -39,6 +48,8 @@ interface AppContextType {
   // Display Controls
   isBalanceHidden: boolean;
   toggleBalanceHidden: () => void;
+  toast: ToastMessage | null;
+  showToast: (message: string, type?: ToastMessage['type']) => void;
 
   // User & Profile
   user: UserProfile;
@@ -71,6 +82,15 @@ interface AppContextType {
     bank?: string
   ) => Promise<Goal>;
   depositToGoal: (goalId: string, amount: number) => Promise<boolean>;
+
+  // Bills
+  bills: Bill[];
+  createBill: (title: string, category: string, amount: number, due_date: string, recurrence: string) => Promise<Bill>;
+  payBill: (billId: string) => Promise<{ success: boolean; message: string }>;
+
+  // Budgets
+  budgets: Budget[];
+  createBudget: (name: string, limit_amount: number, color?: string) => Promise<Budget>;
 
   // Savings Plans
   savingsPlans: SavingsPlan[];
@@ -110,386 +130,70 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const SEED_ACCOUNTS: Account[] = [
-  {
-    id: 'acc-savings',
-    type: 'savings',
-    name: 'Savings Account',
-    balance: 312450.0,
-    account_number: '•••• 4321',
-  },
-  {
-    id: 'acc-current',
-    type: 'current',
-    name: 'Current Account',
-    balance: 180230.0,
-    account_number: '•••• 8765',
-    card_last4: '4192',
-  },
-  {
-    id: 'acc-flex',
-    type: 'flex',
-    name: 'Flex Account',
-    balance: 50000.0,
-    account_number: '•••• 1234',
-  },
-];
-
-const SEED_TRANSACTIONS: Transaction[] = [
-  {
-    id: 'tx-1',
-    type: 'credit',
-    action_type: 'money_received',
-    title: 'Money Received',
-    subtitle: 'From Client Deposit',
-    amount: 25000,
-    timestamp: '2026-10-06T16:12:00',
-    status: 'successful',
-    is_simulated: true,
-    account_type: 'current',
-    reference: 'SIM-EQ-984210',
-    beneficiary: 'Fictional Transfer Client',
-  },
-  {
-    id: 'tx-2',
-    type: 'debit',
-    action_type: 'transfer',
-    title: 'Transfer',
-    subtitle: 'To Adebayo Tunde',
-    amount: 15000,
-    timestamp: '2026-10-06T14:30:00',
-    status: 'successful',
-    is_simulated: true,
-    account_type: 'current',
-    reference: 'SIM-EQ-983199',
-    beneficiary: 'Adebayo Tunde',
-  },
-  {
-    id: 'tx-3',
-    type: 'debit',
-    action_type: 'airtime',
-    title: 'Airtime Purchase',
-    subtitle: 'MTN 0803 123 4567',
-    amount: 1000,
-    timestamp: '2026-10-06T14:30:00',
-    status: 'successful',
-    is_simulated: true,
-    account_type: 'current',
-    reference: 'SIM-EQ-982845',
-    beneficiary: 'MTN Nigeria',
-  },
-  {
-    id: 'tx-4',
-    type: 'debit',
-    action_type: 'bill_payment',
-    title: 'Electricity Bill',
-    subtitle: 'Ibedec',
-    amount: 15000,
-    timestamp: '2026-10-05T11:05:00',
-    status: 'successful',
-    is_simulated: true,
-    account_type: 'current',
-    reference: 'SIM-EQ-979102',
-    beneficiary: 'Ibadan Disco (IBEDC)',
-  },
-  {
-    id: 'tx-5',
-    type: 'credit',
-    action_type: 'money_received',
-    title: 'Salary Credit',
-    subtitle: 'From Campus Enterprise Stipend',
-    amount: 120000,
-    timestamp: '2026-10-03T09:18:00',
-    status: 'successful',
-    is_simulated: true,
-    account_type: 'current',
-    reference: 'SIM-EQ-974221',
-    beneficiary: 'Campus Enterprise Payroll',
-  },
-];
-
-const SEED_GOALS: Goal[] = [
-  {
-    id: 'goal-1',
-    name: 'Laptop Fund',
-    category: 'device',
-    target_amount: 300000,
-    current_amount: 150000,
-    deadline: '2027-02-15',
-    months: 4,
-    required_monthly: 37500,
-    priority: 1,
-    status: 'active',
-    category_color: 'cobalt',
-    bank: 'GTBank',
-  },
-  {
-    id: 'goal-2',
-    name: 'University Essentials',
-    category: 'education',
-    target_amount: 100000,
-    current_amount: 25000,
-    deadline: '2027-01-30',
-    months: 3,
-    required_monthly: 25000,
-    priority: 2,
-    status: 'active',
-    category_color: 'green',
-    bank: 'Access Bank',
-  },
-  {
-    id: 'goal-3',
-    name: 'Travel Home',
-    category: 'travel',
-    target_amount: 80000,
-    current_amount: 10000,
-    deadline: '2026-12-20',
-    months: 2,
-    required_monthly: 35000,
-    priority: 3,
-    status: 'active',
-    category_color: 'cobalt',
-    bank: 'First Bank',
-  },
-];
-
-const SEED_SAVINGS_PLANS: SavingsPlan[] = [
-  {
-    id: 'sp-1',
-    name: 'Emergency Cushion',
-    target_amount: 200000,
-    current_amount: 80000,
-    duration_months: 6,
-    bank: 'Zenith Bank',
-    status: 'active',
-    created_at: '2026-09-01T10:00:00',
-  },
-  {
-    id: 'sp-2',
-    name: 'High-Yield Flex Buffer',
-    target_amount: 150000,
-    current_amount: 50000,
-    duration_months: 12,
-    bank: 'Stanbic IBTC',
-    status: 'active',
-    created_at: '2026-09-15T12:00:00',
-  },
-];
-
-const SEED_MISSIONS: Mission[] = [
-  {
-    id: 'm-1',
-    template_code: 'SAVE_MONTHLY_50K',
-    title: 'Save ₦50,000 This Month',
-    description: 'Keep your financial goals compounding by moving ₦50k into your savings or goals this month.',
-    category: 'saving',
-    current_progress: 32450,
-    target_progress: 50000,
-    unit: '₦',
-    xp_reward: 350,
-    points_reward: 500,
-    status: 'active',
-  },
-  {
-    id: 'm-2',
-    template_code: 'TRANSACT_5_TIMES',
-    title: 'Make 5 Transactions',
-    description: 'Use EcoQuest simulated transfers, bills, or airtime to build digital habits.',
-    category: 'transaction',
-    current_progress: 3,
-    target_progress: 5,
-    unit: 'txns',
-    xp_reward: 200,
-    points_reward: 300,
-    status: 'active',
-  },
-  {
-    id: 'm-3',
-    template_code: 'CARD_USAGE_3X',
-    title: 'Use Your Card 3 Times',
-    description: 'Execute transactions using your simulated debit card to earn cardholder points.',
-    category: 'card',
-    current_progress: 1,
-    target_progress: 3,
-    unit: 'swipes',
-    xp_reward: 150,
-    points_reward: 200,
-    status: 'active',
-  },
-  {
-    id: 'm-4',
-    template_code: 'FIRST_DIGITAL_PAYMENT',
-    title: 'Make Your First Digital Payment',
-    description: 'Pay a utility bill or buy airtime to build verified digital payment experience.',
-    category: 'digital',
-    current_progress: 0,
-    target_progress: 1,
-    unit: 'payment',
-    xp_reward: 150,
-    points_reward: 200,
-    status: 'active',
-  },
-];
-
-const SEED_ACHIEVEMENTS: Achievement[] = [
-  {
-    id: 'ach-1',
-    code: 'FIRST_TRANSFER',
-    title: 'First Transfer',
-    description: 'Sent your first transfer through EcoQuest digital banking.',
-    icon_name: 'leaf',
-    unlocked: true,
-    unlocked_at: '2026-09-15',
-    progress: 1,
-    max_progress: 1,
-  },
-  {
-    id: 'ach-2',
-    code: 'BILL_PAYER',
-    title: 'Bill Payer',
-    description: 'Settled utility and service bills digitally without hassle.',
-    icon_name: 'bill',
-    unlocked: true,
-    unlocked_at: '2026-09-22',
-    progress: 1,
-    max_progress: 1,
-  },
-  {
-    id: 'ach-3',
-    code: 'GOAL_SETTER',
-    title: 'Goal Setter',
-    description: 'Created and structured your first targeted savings goal.',
-    icon_name: 'bolt',
-    unlocked: true,
-    unlocked_at: '2026-09-10',
-    progress: 1,
-    max_progress: 1,
-  },
-  {
-    id: 'ach-4',
-    code: 'SAVINGS_CHAMPION',
-    title: 'Savings Champion',
-    description: 'Accumulated over ₦100,000 in dedicated savings accounts.',
-    icon_name: 'piggy',
-    unlocked: true,
-    unlocked_at: '2026-09-28',
-    progress: 1,
-    max_progress: 1,
-  },
-  {
-    id: 'ach-5',
-    code: 'STREAK_MASTER',
-    title: 'Streak Master',
-    description: 'Maintained consecutive weekly savings activities for 3+ weeks.',
-    icon_name: 'flame',
-    unlocked: true,
-    unlocked_at: '2026-10-01',
-    progress: 1,
-    max_progress: 1,
-  },
-  {
-    id: 'ach-6',
-    code: 'LEVEL_UP',
-    title: 'Level Up',
-    description: 'Progressed through ranks to achieve Champion status.',
-    icon_name: 'crown',
-    unlocked: true,
-    unlocked_at: '2026-10-02',
-    progress: 1,
-    max_progress: 1,
-  },
-];
-
-const SEED_REWARDS: Reward[] = [
-  {
-    id: 'rew-1',
-    title: '₦1,000 Airtime Top-Up',
-    description: 'Instant recharge voucher valid for MTN, Airtel, Glo, or 9mobile.',
-    points_cost: 800,
-    category: 'airtime',
-    value_display: '₦1,000',
-  },
-  {
-    id: 'rew-2',
-    title: 'Zero Transfer Fees (30 Days)',
-    description: 'Waive all simulated processing fees on outward transfers for one month.',
-    points_cost: 1200,
-    category: 'perk',
-    value_display: '30 Days Free',
-  },
-  {
-    id: 'rew-3',
-    title: 'EcoQuest Premium Cap',
-    description: 'Official EcoQuest merchandise shipped to your verified campus or home address.',
-    points_cost: 2000,
-    category: 'merch',
-    value_display: 'Merch Item',
-  },
-  {
-    id: 'rew-4',
-    title: '₦5,000 Supermarket Voucher',
-    description: 'Redeemable at Shoprite, Spar, or Prince Ebeano Supermarkets nationwide.',
-    points_cost: 3500,
-    category: 'voucher',
-    value_display: '₦5,000 Voucher',
-  },
-  {
-    id: 'rew-5',
-    title: '₦10,000 Tech Gadget Discount',
-    description: 'Special discount voucher on certified study devices and accessories.',
-    points_cost: 7000,
-    category: 'voucher',
-    value_display: '₦10,000 Off',
-  },
-];
-
 const INITIAL_USER: UserProfile = {
-  name: 'User',
-  email: 'alex@example.com',
-  occupation: 'student',
-  income_stability: 'variable',
-  active_accounts_count: 2,
+  name: '',
+  email: '',
+  occupation: '' as any,
+  income_stability: '' as any,
+  active_accounts_count: 0,
   has_emergency_savings: false,
-  monthly_target: 30000,
-  customer_segment: 'student_saver',
-  customer_segment_name: 'Student Saver',
-  financial_tier: 'essentials',
-  financial_score: 2,
-  savings_profile: 'money_learner',
-  savings_profile_name: 'Money Learner',
-  digital_usage: 'moderate',
+  monthly_target: 0,
+  customer_segment: '' as any,
+  customer_segment_name: '',
+  financial_tier: '' as any,
+  financial_score: 0,
+  savings_profile: '' as any,
+  savings_profile_name: '',
+  digital_usage: '' as any,
   explanation: {
-    customer_segment: [
-      "You're a student building savings habits",
-      'Your primary goal is University Essentials',
-    ],
-    savings_profile: [
-      'You selected an education-related goal as a student',
-      "You're starting your foundational financial growth journey",
-    ],
-    financial_tier: [
-      'Monthly target: ₦30,000 meets baseline threshold (+1)',
-      'Income stability: Variable cash inflow (+0)',
-      '2 active bank accounts utilized (+1)',
-    ],
+    customer_segment: [],
+    savings_profile: [],
+    financial_tier: [],
   },
-  level: calculateLevel(3750),
-  xp: 3750,
-  reward_points: 2480,
-  has_completed_onboarding: true,
-  streak_days: 14,
+  level: { index: 1, name: 'Starter', code: 'starter', xp: 0, xp_floor: 0, xp_next: 100 },
+  xp: 0,
+  reward_points: 0,
+  has_completed_onboarding: false,
+  streak_days: 0,
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isAppLoading, setIsAppLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<string>('landing');
+  
+  const getInitialTab = () => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname.substring(1);
+      return path || 'landing';
+    }
+    return 'landing';
+  };
+  
+  const [activeTab, setActiveTab] = useState<string>(getInitialTab);
   const [isBalanceHidden, setIsBalanceHidden] = useState<boolean>(false);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+
+  const showToast = (message: string, type: ToastMessage['type'] = 'info') => {
+    const id = Math.random().toString(36).substring(7);
+    setToast({ id, message, type });
+    setTimeout(() => {
+      setToast((current) => (current?.id === id ? null : current));
+    }, 4000);
+  };
+  
+  const setTabWithUrl = (tab: string) => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      window.history.pushState(null, '', `/${tab === 'dashboard' ? 'dashboard' : tab}`);
+    }
+  };
   
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [bills, setBills] = useState<Bill[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [savingsPlans, setSavingsPlans] = useState<SavingsPlan[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
@@ -538,7 +242,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         financial_score: me.financial_score || 2,
         savings_profile: me.savings_profile || 'money_learner',
         savings_profile_name: me.savings_profile_name || 'Money Learner',
-        digital_usage: 'moderate',
+        digital_usage: me.digital_usage || 'moderate',
         explanation: me.explanation || INITIAL_USER.explanation,
         has_completed_onboarding: me.has_completed_onboarding,
         level: calculateLevel(0),
@@ -547,50 +251,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         streak_days: 1
       };
       
-      try {
-        const xps = await api.getXP();
-        updatedUser.xp = xps.xp;
-        updatedUser.reward_points = xps.points;
-        updatedUser.level = calculateLevel(xps.xp);
-        updatedUser.streak_days = xps.streak_days;
-      } catch (e) {}
-      setUser(updatedUser);
+      const [
+        xps, accs, txs, gs, bs, bdgs, sps, achs, ms, rs
+      ] = await Promise.all([
+          api.getXP().catch(() => null),
+          api.getAccounts().catch(() => []),
+          api.getTransactions().catch(() => []),
+          api.getGoals().catch(() => []),
+          api.getBills().catch(() => []),
+          api.getBudgets().catch(() => []),
+          api.getSavingsPlans().catch(() => []),
+          api.getAchievements().catch(() => []),
+          api.getMissions().catch(() => []),
+          api.getRewards().catch(() => [])
+        ]);
 
-      const accs = await api.getAccounts();
-      setAccounts(accs);
+        if (xps) {
+          updatedUser.xp = xps.xp;
+          updatedUser.reward_points = xps.points;
+          updatedUser.level = calculateLevel(xps.xp);
+          updatedUser.streak_days = xps.streak_days;
+        }
+        setUser(updatedUser);
 
-      const txs = await api.getTransactions();
-      setTransactions(txs.map((t: any) => ({
-         ...t,
-         title: t.description || t.action_type,
-         subtitle: t.recipient || '',
-         timestamp: t.created_at,
-         beneficiary: t.recipient
-      })));
+        setAccounts(accs);
 
-      const gs = await api.getGoals();
-      setGoals(gs);
+        setTransactions((txs || []).map((t: any) => ({
+           ...t,
+           title: t.description || t.action_type,
+           subtitle: t.recipient || '',
+           timestamp: t.created_at,
+           beneficiary: t.recipient
+        })));
 
-      const sps = await api.getSavingsPlans();
-      setSavingsPlans(sps);
+        setGoals(gs);
+        setBills(bs);
+        setBudgets(bdgs);
+        setSavingsPlans(sps);
 
-      const achs = await api.getAchievements();
-      setAchievements(achs.map((a: any) => ({
-        ...a,
-        title: a.name,
-        unlocked: a.completed,
-        unlocked_at: a.completed_at,
-        progress: a.completed ? 1 : 0,
-        max_progress: 1
-      })));
+        setAchievements((achs || []).map((a: any) => ({
+          ...a,
+          title: a.name,
+          unlocked: a.completed,
+          unlocked_at: a.completed_at,
+          progress: a.completed ? 1 : 0,
+          max_progress: 1
+        })));
 
-      const ms = await api.getMissions();
-      setMissions(ms);
-      
-      const rs = await api.getRewards();
-      setRewards(rs);
-      
-      return updatedUser;
+        setMissions((ms || []).map((m: any) => ({
+          ...m,
+          template_code: m.code
+        })));
+        
+        setRewards(rs);
+        
+        return updatedUser;
     } catch (err) {
       console.error(err);
       throw err;
@@ -598,47 +313,75 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.substring(1);
+      setActiveTab(path || 'dashboard');
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+
     const init = async () => {
       const token = localStorage.getItem('auth_token');
       if (token) {
         try {
           const u = await loadUserData();
           setIsAuthenticated(true);
-          setActiveTab(u.has_completed_onboarding ? 'dashboard' : 'onboarding');
+          const currentPath = window.location.pathname.substring(1);
+          if (!currentPath || currentPath === 'landing' || currentPath === 'login' || currentPath === 'register') {
+            setTabWithUrl(u.has_completed_onboarding ? 'dashboard' : 'onboarding');
+          } else {
+            setActiveTab(currentPath);
+          }
         } catch {
           setIsAuthenticated(false);
-          setActiveTab('landing');
+          setTabWithUrl('landing');
         }
       } else {
         setIsAuthenticated(false);
-        setActiveTab('landing');
+        const currentPath = window.location.pathname.substring(1);
+        if (currentPath !== 'login' && currentPath !== 'register') {
+          setTabWithUrl('landing');
+        } else {
+          setActiveTab(currentPath);
+        }
       }
       setIsAppLoading(false);
     };
     init();
+    
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   const createAccount = async (fullName: string, email: string, password?: string, confirmPassword?: string) => {
     const data = await api.register({ name: fullName, email, password, confirm_password: confirmPassword });
+    if (data._isAuthError) {
+      throw new Error(data.message);
+    }
     localStorage.setItem('auth_token', data.access_token);
+    document.cookie = `auth_token=${data.access_token}; path=/; max-age=604800; samesite=strict`;
     await loadUserData();
     setIsAuthenticated(true);
-    setActiveTab('onboarding');
+    setTabWithUrl('onboarding');
   };
 
   const login = async (email?: string, password?: string) => {
     const data = await api.login({ email, password });
+    if (data._isAuthError) {
+      throw new Error(data.message);
+    }
     localStorage.setItem('auth_token', data.access_token);
+    document.cookie = `auth_token=${data.access_token}; path=/; max-age=604800; samesite=strict`;
     const u = await loadUserData();
     setIsAuthenticated(true);
-    setActiveTab(u.has_completed_onboarding ? 'dashboard' : 'onboarding');
+    setTabWithUrl(u.has_completed_onboarding ? 'dashboard' : 'onboarding');
   };
 
   const logout = () => {
     localStorage.removeItem('auth_token');
+    document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     api.logout().catch(() => {});
     setIsAuthenticated(false);
-    setActiveTab('landing');
+    setTabWithUrl('landing');
   };
 
   const addFunds = async (accountId: number | string, amount: number) => {
@@ -649,8 +392,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const simulateTransfer = async (sourceAccountId: number | string, recipient: string, bank: string, amount: number, note?: string) => {
+    if (isNaN(amount) || amount <= 0) return { transaction: {} as Transaction, success: false };
+    if (amount > 500000) {
+      alert("Maximum demo transfer limit exceeded (₦500,000)");
+      return { transaction: {} as Transaction, success: false };
+    }
+    
     const srcAcc = accounts.find((a) => String(a.id) === String(sourceAccountId));
-    if (!srcAcc || srcAcc.balance < amount) return { transaction: {} as Transaction, success: false };
+    if (!srcAcc) return { transaction: {} as Transaction, success: false };
+    
+    if (srcAcc.balance < amount) {
+      alert("Insufficient balance.");
+      return { transaction: {} as Transaction, success: false };
+    }
+    
+    // Simplistic check for self-transfer, assuming recipient might be matching the user name or account.
+    // Real implementation would check the actual recipient account ID if internal.
+    if (recipient.toLowerCase() === user.name.toLowerCase()) {
+       alert("You cannot transfer to yourself.");
+       return { transaction: {} as Transaction, success: false };
+    }
     
     const res = await api.createTransaction({
       account_id: srcAcc.id,
@@ -717,22 +478,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     } else {
       const targetAccount = accounts.find((a) => a.type === targetAccountType) || accounts[0];
-      res = await api.createTransaction({
-        account_id: srcAcc.id,
-        type: 'debit',
-        action_type: 'saving_transfer',
-        amount,
-        description: 'Save Money',
-        recipient: `Moved to ${targetAccount.name}`
-      });
-      await api.createTransaction({
-        account_id: targetAccount.id,
-        type: 'credit',
-        action_type: 'saving_transfer',
-        amount,
-        description: 'Save Money',
-        recipient: `From ${srcAcc.name}`
-      });
+      const transferRes = await executeAtomicTransfer(
+        typeof srcAcc.id === 'string' ? parseInt(srcAcc.id) : srcAcc.id,
+        typeof targetAccount.id === 'string' ? parseInt(targetAccount.id) : targetAccount.id,
+        amount
+      );
+      res = { transaction: {} as Transaction, success: 'success' in transferRes ? transferRes.success : false };
     }
     
     await loadUserData();
@@ -793,6 +544,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const createBudget = async (name: string, limit_amount: number, color?: string) => {
+    const newBudget = await api.createBudget({ name, limit_amount, color: color || "bg-[#3B82F6]" });
+    await loadUserData();
+    return newBudget;
+  };
+
+  const createBill = async (title: string, category: string, amount: number, due_date: string, recurrence: string) => {
+    const newBill = await api.createBill({ title, category, amount, due_date, recurrence });
+    await loadUserData();
+    return newBill;
+  };
+
+  const payBill = async (billId: string) => {
+    try {
+      const res = await api.payBill(Number(billId));
+      await loadUserData();
+      
+      if (res.first_payment_achievement_unlocked) {
+        showToast('Achievement Unlocked! 🏆 First Digital Payment completed. You earned 100 XP!', 'reward');
+      } else if (res.xp_awarded && res.xp_awarded > 0) {
+        showToast(`XP Earned! ✨ You earned ${res.xp_awarded} XP and ${res.points_awarded} points for paying a bill!`, 'reward');
+      }
+      
+      return { success: true, message: res.message || 'Bill paid successfully', transaction: res.transaction };
+    } catch (error: any) {
+      return { success: false, message: error.message || 'Failed to pay bill' };
+    }
+  };
+
   const submitOnboarding = async (values: OnboardingFormValues) => {
     const goalsForBackend = values.goals.map((g) => ({
       category: g.category,
@@ -813,7 +593,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     await loadUserData();
-    setActiveTab('dashboard');
+    setTabWithUrl('dashboard');
   };
 
   const updateProfileAnswers = async (values: OnboardingFormValues) => {
@@ -833,14 +613,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider
       value={{
-        isAuthenticated, activeTab, setActiveTab, createAccount, login, logout,
-        isBalanceHidden, toggleBalanceHidden, user, profileHistory, submitOnboarding,
+        isAuthenticated, activeTab, setActiveTab: setTabWithUrl, createAccount, login, logout,
+        isBalanceHidden, toggleBalanceHidden, toast, showToast, user, profileHistory, submitOnboarding,
         updateProfileAnswers, resetToFreshUser, loadDemoPersona, accounts, totalBalance,
         addFunds, transactions, simulateTransfer, simulateBillPay, simulateAirtime,
         simulateSaveMoney, goals, createGoal, depositToGoal, savingsPlans, createSavingsPlan,
         missions, claimMissionReward, achievements, activeMissionNotice, hasAwardedFirstDigitalPayment,
         rewards, redemptions, redeemReward, activeModal, openModal, closeModal, modalData,
         showLevelUp, dismissLevelUp, searchQuery, setSearchQuery, notificationsCount, clearNotifications,
+        bills, createBill, payBill, budgets, createBudget,
       }}
     >
       {children}

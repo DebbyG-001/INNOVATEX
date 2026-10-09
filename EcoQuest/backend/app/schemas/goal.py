@@ -13,7 +13,6 @@ class GoalCreate(BaseModel):
 
 
 class GoalUpdate(BaseModel):
-    current_amount: Optional[float] = None
     target_amount: Optional[float] = None
     status: Optional[str] = None
 

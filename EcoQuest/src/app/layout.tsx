@@ -17,6 +17,9 @@ export const metadata: Metadata = {
     description:
       'EcoQuest is a gamified green finance and personal budgeting platform with behavioral rules engine, missions, XP, and savings goals.',
   },
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({

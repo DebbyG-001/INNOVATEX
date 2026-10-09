@@ -6,6 +6,8 @@ from app.routes.goals import router as goals_router
 from app.routes.savings import router as savings_router
 from app.routes.gamification import router as gamification_router
 from app.routes.onboarding import router as onboarding_router
+from app.routes.bills import router as bills_router
+from app.routes.budget import router as budget_router
 
 __all__ = [
     "auth_router",
@@ -16,4 +18,6 @@ __all__ = [
     "savings_router",
     "gamification_router",
     "onboarding_router",
+    "bills_router",
+    "budget_router",
 ]

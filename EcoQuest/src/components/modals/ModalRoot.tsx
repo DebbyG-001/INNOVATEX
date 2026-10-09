@@ -7,6 +7,7 @@ import { CreateGoalModal } from './CreateGoalModal';
 import { LevelUpModal } from './LevelUpModal';
 import { MoreActionsModal } from './MoreActionsModal';
 import { PayBillsModal } from './PayBillsModal';
+import { CreateBudgetModal } from './CreateBudgetModal';
 import { RedeemRewardsModal } from './RedeemRewardsModal';
 import { SaveMoneyModal } from './SaveMoneyModal';
 import { TransactionReceiptModal } from './TransactionReceiptModal';
@@ -23,6 +24,7 @@ export const ModalRoot: React.FC = () => {
       {activeModal === 'buy_airtime' && <AirtimeModal />}
       {activeModal === 'save_money' && <SaveMoneyModal />}
       {activeModal === 'add_funds' && <AddFundsModal />}
+      {activeModal === 'create_budget' && <CreateBudgetModal />}
       {activeModal === 'create_goal' && <CreateGoalModal />}
       {activeModal === 'redeem_rewards' && <RedeemRewardsModal />}
       {activeModal === 'transaction_receipt' && <TransactionReceiptModal />}

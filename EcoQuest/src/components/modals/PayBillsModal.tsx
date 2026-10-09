@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { formatNaira } from '../../lib/formatters';
 
 export const PayBillsModal: React.FC = () => {
-  const { closeModal, accounts, simulateBillPay, openModal } = useApp();
+  const { closeModal, accounts, simulateBillPay, createBill, openModal } = useApp();
   
   const [sourceAccountId, setSourceAccountId] = useState<number | string>('');
   const selectedAccount = accounts.find((a) => String(a.id) === String(sourceAccountId));
@@ -12,6 +12,7 @@ export const PayBillsModal: React.FC = () => {
   const [biller, setBiller] = useState('Ibadan Electricity (IBEDC)');
   const [customerId, setCustomerId] = useState('');
   const [amountStr, setAmountStr] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
   const [error, setError] = useState('');
 
   const billers = [
@@ -49,13 +50,25 @@ export const PayBillsModal: React.FC = () => {
     try {
       const res = await simulateBillPay(sourceAccountId, biller, customerId, amount);
       if (res.success) {
+        if (isRecurring) {
+          // Schedule next month's bill
+          const nextMonth = new Date();
+          nextMonth.setMonth(nextMonth.getMonth() + 1);
+          await createBill(
+            `${biller} - ${customerId}`,
+            'utility',
+            amount,
+            nextMonth.toISOString(),
+            'Monthly'
+          );
+        }
         closeModal();
         openModal('transaction_receipt', res.transaction);
       } else {
         setError('Bill payment failed.');
       }
-    } catch (e) {
-      setError('Bill payment failed.');
+    } catch (e: any) {
+      setError(e.message || 'Bill payment failed.');
     } finally {
       setIsSubmitting(false);
     }
@@ -154,6 +167,19 @@ export const PayBillsModal: React.FC = () => {
                 className="w-full bg-[#F4F7FC] border border-[#E3E9F4] rounded-xl pl-8 pr-3.5 py-2.5 text-xs font-bold text-[#0B1B3A] focus:ring-2 focus:ring-[#0047AB] outline-none"
               />
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="recurring"
+              checked={isRecurring}
+              onChange={(e) => setIsRecurring(e.target.checked)}
+              className="w-4 h-4 text-[#0047AB] border-[#E3E9F4] rounded focus:ring-[#0047AB]"
+            />
+            <label htmlFor="recurring" className="text-xs font-medium text-[#0B1B3A]">
+              Save as a recurring monthly bill
+            </label>
           </div>
 
           <div className="pt-2 flex items-center justify-end gap-2.5">

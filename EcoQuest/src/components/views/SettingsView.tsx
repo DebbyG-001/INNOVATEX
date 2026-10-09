@@ -7,6 +7,7 @@ import {
   Shield,
   Sparkles,
   User,
+  LogOut,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -18,6 +19,7 @@ export const SettingsView: React.FC = () => {
     resetToFreshUser,
     loadDemoPersona,
     setActiveTab,
+    logout,
   } = useApp();
 
   return (
@@ -96,6 +98,17 @@ export const SettingsView: React.FC = () => {
             </p>
           </button>
         </div>
+      </div>
+
+      {/* Logout */}
+      <div className="pt-8">
+        <button
+          onClick={logout}
+          className="w-full sm:w-auto px-6 py-3 bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444] hover:text-white font-bold rounded-2xl transition-colors cursor-pointer flex items-center justify-center gap-2"
+        >
+          <LogOut className="w-5 h-5" />
+          <span>Log Out of EcoQuest</span>
+        </button>
       </div>
     </div>
   );

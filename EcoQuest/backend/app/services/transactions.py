@@ -12,10 +12,11 @@ from app.schemas.transaction import TransactionCreate
 from app.services.rules_engine import calculate_level
 
 
-def process_transaction(db: Session, user: User, data: TransactionCreate):
+def process_transaction(db: Session, user: User, data: TransactionCreate, commit: bool = True):
     account = (
         db.query(Account)
         .filter(Account.id == data.account_id, Account.user_id == user.id)
+        .with_for_update()
         .first()
     )
     if not account:
@@ -54,7 +55,7 @@ def process_transaction(db: Session, user: User, data: TransactionCreate):
     # Save money can credit savings account or goal
     if action_type == "saving_transfer":
         if data.goal_id:
-            goal = db.query(Goal).filter(Goal.id == data.goal_id, Goal.user_id == user.id).first()
+            goal = db.query(Goal).filter(Goal.id == data.goal_id, Goal.user_id == user.id).with_for_update().first()
             if goal:
                 if goal.status == "completed":
                     raise HTTPException(
@@ -74,6 +75,7 @@ def process_transaction(db: Session, user: User, data: TransactionCreate):
             savings_acc = (
                 db.query(Account)
                 .filter(Account.user_id == user.id, Account.account_type == "savings")
+                .with_for_update()
                 .first()
             )
             if savings_acc:
@@ -169,14 +171,19 @@ def process_transaction(db: Session, user: User, data: TransactionCreate):
             m.current_progress = min(m.target_progress, m.current_progress + amount)
             if m.current_progress >= m.target_progress:
                 m.status = "completed"
+        elif m.code == "FIRST_GUIDED_MISSION" and action_type == "saving_transfer":
+            m.current_progress = min(m.target_progress, m.current_progress + amount)
+            if m.current_progress >= m.target_progress:
+                m.status = "completed"
 
-    db.commit()
-    db.refresh(tx)
-    db.refresh(account)
+    if commit:
+        db.commit()
+        db.refresh(tx)
+        db.refresh(account)
 
     # Evaluate all achievements globally
     from app.services.achievements import evaluate_achievements
-    newly_unlocked = evaluate_achievements(user.id, db)
+    newly_unlocked = evaluate_achievements(user.id, db, commit=commit)
     first_payment_unlocked = "FIRST_DIGITAL_PAYMENT" in (newly_unlocked or [])
 
     return {

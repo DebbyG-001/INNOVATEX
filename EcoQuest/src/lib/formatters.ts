@@ -1,23 +1,27 @@
-export function formatNaira(amount: number, hideDecimals = false): string {
+export function formatNaira(amount: number | string | null | undefined, hideDecimals = false): string {
+  const parsed = Number(amount);
+  const safeAmount = isNaN(parsed) ? 0 : parsed / 100;
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
     currency: 'NGN',
     minimumFractionDigits: hideDecimals ? 0 : 2,
     maximumFractionDigits: hideDecimals ? 0 : 2,
   })
-    .format(amount)
+    .format(safeAmount)
     .replace('NGN', '₦')
     .trim();
 }
 
-export function formatCompactNaira(amount: number): string {
-  if (amount >= 1_000_000) {
-    return `₦${(amount / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+export function formatCompactNaira(amount: number | string | null | undefined): string {
+  const parsed = Number(amount);
+  const safeAmount = isNaN(parsed) ? 0 : parsed / 100;
+  if (safeAmount >= 1_000_000) {
+    return `₦${(safeAmount / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
   }
-  if (amount >= 1_000) {
-    return `₦${(amount / 1_000).toFixed(0)}k`;
+  if (safeAmount >= 1_000) {
+    return `₦${(safeAmount / 1_000).toFixed(0)}k`;
   }
-  return `₦${amount.toLocaleString()}`;
+  return `₦${safeAmount.toLocaleString()}`;
 }
 
 export function getGreeting(name: string): string {

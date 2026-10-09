@@ -11,7 +11,7 @@ import { useApp } from '../../context/AppContext';
 import { formatDate, formatNaira } from '../../lib/formatters';
 import { Transaction } from '../../types';
 
-export const RecentTransactions: React.FC = () => {
+export const RecentTransactions: React.FC<{ limit?: number }> = ({ limit = 5 }) => {
   const { transactions, searchQuery, openModal, setActiveTab } = useApp();
   const [filterType, setFilterType] = useState<'all' | 'credit' | 'debit'>('all');
 
@@ -118,7 +118,7 @@ export const RecentTransactions: React.FC = () => {
             No transactions found.
           </div>
         ) : (
-          filtered.slice(0, 5).map((tx) => {
+          filtered.slice(0, limit).map((tx) => {
             const { icon: Icon, bg } = getTxIcon(tx.action_type);
             const isPositive = tx.type === 'credit';
 

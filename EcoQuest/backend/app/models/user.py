@@ -26,6 +26,8 @@ class User(Base):
     financial_score = Column(Integer, default=2)
     monthly_target = Column(Integer, default=30000)
     has_emergency_savings = Column(Boolean, default=False)
+    active_accounts_count = Column(Integer, default=2)
+    digital_usage = Column(String(50), nullable=True, default="moderate")
     explanation_json = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
@@ -37,3 +39,4 @@ class User(Base):
     savings_plans = relationship("SavingsPlan", back_populates="user", cascade="all, delete-orphan")
     xp_record = relationship("UserXP", back_populates="user", uselist=False, cascade="all, delete-orphan")
     user_achievements = relationship("UserAchievement", back_populates="user", cascade="all, delete-orphan")
+    bills = relationship("Bill", back_populates="user", cascade="all, delete-orphan")

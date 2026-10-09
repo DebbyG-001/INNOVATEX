@@ -7,7 +7,7 @@ from app.models.goal import Goal
 from app.models.account import Account
 from app.services.rules_engine import calculate_level
 
-def evaluate_achievements(user_id: str, db: Session):
+def evaluate_achievements(user_id: str, db: Session, commit: bool = True):
     # Get all achievements
     all_achievements = db.query(Achievement).all()
     ach_map = {ach.code: ach for ach in all_achievements}
@@ -106,7 +106,7 @@ def evaluate_achievements(user_id: str, db: Session):
             Account.user_id == user_id,
             Account.account_type.in_(["savings", "flex"])
         ).scalar() or 0.0
-        if savings_balance >= 100000:
+        if savings_balance >= 10000000:
             unlock("SAVINGS_CHAMPION")
 
     # 6. STREAK_MASTER
@@ -135,6 +135,7 @@ def evaluate_achievements(user_id: str, db: Session):
             user_xp.level_index = new_lvl_idx
             user_xp.level_name = new_lvl_name
 
-        db.commit()
+        if commit:
+            db.commit()
 
     return newly_unlocked

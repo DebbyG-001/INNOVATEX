@@ -1,0 +1,95 @@
+PHASE 11 — GOALS
+
+==================================================
+
+
+
+Users create their own goals.
+
+
+
+Goal should contain:
+
+
+
+- title
+
+- target amount
+
+- saved amount
+
+- deadline
+
+- status
+
+- user ownership
+
+
+
+Contributions must be real financial operations.
+
+
+
+Example:
+
+
+
+Balance:
+
+₦100,000
+
+
+
+Goal:
+
+₦500,000
+
+
+
+Contribution:
+
+₦50,000
+
+
+
+Result:
+
+
+
+Balance:
+
+₦50,000
+
+
+
+Goal saved:
+
+₦50,000
+
+
+
+Progress:
+
+10%
+
+
+
+Transaction:
+
+created
+
+
+
+Gamification:
+
+updated if appropriate
+
+
+
+All relevant changes should happen atomically.
+
+
+
+==================================================
+
+PHASE 12

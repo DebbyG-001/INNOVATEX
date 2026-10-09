@@ -1,0 +1,81 @@
+PHASE 15 — DASHBOARD PERFORMANCE
+
+==================================================
+
+
+
+The current dashboard reportedly has fragmented requests like:
+
+
+
+GET /api/user
+
+GET /api/balance
+
+GET /api/transactions
+
+GET /api/bills
+
+GET /api/goals
+
+
+
+Review the actual implementation.
+
+
+
+Do not blindly combine everything into one enormous endpoint.
+
+
+
+Instead, determine the best architecture.
+
+
+
+Where appropriate:
+
+
+
+Server Component
+
+↓
+
+dashboard service
+
+↓
+
+parallel database queries
+
+↓
+
+dashboard view model
+
+
+
+Keep interactive elements as Client Components.
+
+
+
+Reduce unnecessary:
+
+
+
+- useEffect fetches
+
+- duplicate API calls
+
+- waterfalls
+
+- global state
+
+- re-renders
+
+
+
+Do not optimize prematurely.
+
+
+
+==================================================
+
+PHASE 16

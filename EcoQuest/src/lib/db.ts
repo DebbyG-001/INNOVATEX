@@ -23,9 +23,43 @@ export function getDatabaseConfig(): DatabaseConfig {
   };
 }
 
-export async function queryDatabase(text: string, params?: any[]): Promise<any> {
+declare global {
+  // eslint-disable-next-line no-var
+  var _pgPool: any | undefined;
+}
+
+let productionPool: any | undefined;
+
+export async function getDbPool() {
   const config = getDatabaseConfig();
-  if (!config.isConfigured) {
+  if (!config.isConfigured) return null;
+
+  if (process.env.NODE_ENV === 'production') {
+    if (!productionPool) {
+      // @ts-ignore
+      const { Pool } = await import('pg');
+      productionPool = new Pool({
+        connectionString: config.connectionString,
+        ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
+      });
+    }
+    return productionPool;
+  } else {
+    if (!global._pgPool) {
+      // @ts-ignore
+      const { Pool } = await import('pg');
+      global._pgPool = new Pool({
+        connectionString: config.connectionString,
+        ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
+      });
+    }
+    return global._pgPool;
+  }
+}
+
+export async function queryDatabase(text: string, params?: any[]): Promise<any> {
+  const pool = await getDbPool();
+  if (!pool) {
     // Transparently indicate that external PostgreSQL is not attached in the current environment
     return {
       rows: [],
@@ -35,20 +69,37 @@ export async function queryDatabase(text: string, params?: any[]): Promise<any> 
     };
   }
 
-  // When DATABASE_URL is supplied in production or Cloud SQL:
   try {
-    // Dynamic import to avoid client-side bundling issues
-    // @ts-ignore
-    const { Pool } = await import('pg');
-    const pool = new Pool({
-      connectionString: config.connectionString,
-      ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
-    });
     const result = await pool.query(text, params);
-    await pool.end();
     return result;
   } catch (error) {
     console.error('Database query error:', error);
     throw error;
+  }
+}
+
+export async function withTransaction<T>(
+  callback: (client: any) => Promise<T>
+): Promise<T | { simulated: true; message: string }> {
+  const pool = await getDbPool();
+  if (!pool) {
+    return {
+      simulated: true,
+      message: 'PostgreSQL is not configured.',
+    };
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await callback(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Database transaction error:', error);
+    throw error;
+  } finally {
+    client.release();
   }
 }

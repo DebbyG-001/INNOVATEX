@@ -7,7 +7,7 @@ import { formatNaira } from '../../lib/formatters';
 import { NIGERIAN_BANKS, SAVINGS_DURATIONS } from '../../types';
 
 export const SaveMoneyModal: React.FC = () => {
-  const { closeModal, accounts, goals, simulateSaveMoney, openModal, modalData } = useApp();
+  const { closeModal, accounts, goals, simulateSaveMoney, openModal, modalData, showToast } = useApp();
   
   const [sourceAccountId, setSourceAccountId] = useState<number | string>('');
   const selectedAccount = accounts.find((a) => String(a.id) === String(sourceAccountId));
@@ -53,6 +53,7 @@ export const SaveMoneyModal: React.FC = () => {
       const res = await simulateSaveMoney(sourceAccountId, goalId, targetAccountType, amount, bank);
       if (res.success) {
         closeModal();
+        showToast(`🎉 Nice move! You just saved ₦${amount.toLocaleString()}`, 'success');
         openModal('transaction_receipt', res.transaction);
       } else {
         setError('Failed to process savings transfer.');

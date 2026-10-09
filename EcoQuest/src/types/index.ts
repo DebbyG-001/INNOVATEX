@@ -106,6 +106,17 @@ export interface SavingsPlan {
   created_at: string;
 }
 
+export interface Bill {
+  id: string;
+  title: string;
+  category: string;
+  amount: number;
+  due_date: string;
+  recurrence: string;
+  status: 'pending' | 'paid';
+  created_at: string;
+}
+
 export interface UserAccount {
   id: string;
   fullName: string;
@@ -131,6 +142,15 @@ export interface Mission {
     source: string;
     goal_name?: string;
   };
+}
+
+export interface Budget {
+  id: number;
+  name: string;
+  limit_amount: number;
+  spent: number;
+  color: string;
+  created_at: string;
 }
 
 export interface Account {

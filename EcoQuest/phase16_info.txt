@@ -1,0 +1,57 @@
+PHASE 16 — REACT/NEXT.JS PERFORMANCE
+
+==================================================
+
+
+
+Review excessive `"use client"` usage.
+
+
+
+Move static/server-renderable UI to Server Components where appropriate.
+
+
+
+Keep client components for:
+
+
+
+- forms
+
+- modals
+
+- interactive controls
+
+- animations requiring browser APIs
+
+- local interaction state
+
+
+
+Do not convert everything to Server Components just because it is theoretically possible.
+
+
+
+Avoid unnecessary:
+
+
+
+- useEffect
+
+- useMemo
+
+- useCallback
+
+- context
+
+- global state
+
+
+
+Only optimize identified bottlenecks.
+
+
+
+==================================================
+
+PHASE 17

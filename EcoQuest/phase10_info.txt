@@ -1,0 +1,355 @@
+PHASE 10 — UI polish/testing
+
+==================================================
+PHASE 0 — VERIFY THE EXISTING CODE
+==================================================
+
+Before modifying anything, inspect the relevant existing files for the phase you are working on.
+
+Do not assume the audit is perfectly accurate.
+
+If the audit says something is wrong, verify it against the actual code.
+
+If the audit is correct, implement the fix.
+
+If the audit is incorrect, explain why before making the alternative change.
+
+==================================================
+PHASE 1 — FIX NEXT.JS DEVELOPMENT ENVIRONMENT
+==================================================
+
+First solve the current development-server problem.
+
+Known errors include:
+
+- `SegmentViewNode` missing from React Client Manifest
+- `Cannot find module './611.js'`
+- webpack runtime errors
+- `_app` undefined
+- extremely slow compilation
+- incorrect workspace-root warning
+
+There are two lockfiles:
+
+C:\Users\Joseph Dania\Documents\package-lock.json
+
+and:
+
+C:\Users\Joseph Dania\Documents\INNOVATEX\EcoQuest\package-lock.json
+
+The EcoQuest lockfile is the authoritative one.
+
+First determine whether the parent Documents lockfile belongs to another active npm project.
+
+Do NOT delete it blindly.
+
+If it is an accidental stray lockfile, remove/quarantine it safely.
+
+Then clean the EcoQuest development artifacts.
+
+The intended cleanup is:
+
+- `.next`
+- stale/inconsistent dependency artifacts if actually necessary
+
+Do NOT unnecessarily reinstall everything if deleting `.next` resolves the problem.
+
+Then verify:
+
+npm run dev
+
+The development server should not repeatedly produce:
+
+- SegmentViewNode errors
+- missing webpack chunks
+- `_app` errors
+- unexplained 500 responses
+- 60–80 second compilation loops
+
+Do not move to major application architecture changes until the development environment is stable.
+
+==================================================
+PHASE 2 — DATABASE CONNECTION FOUNDATION
+==================================================
+
+Inspect the current PostgreSQL connection implementation.
+
+If the project creates a new Pool/client repeatedly inside route handlers, replace that with an appropriate singleton/pooling pattern for Next.js.
+
+Use the existing database library if possible.
+
+Do not add a new ORM/database library unless there is a strong reason.
+
+Make the database layer reusable.
+
+Keep credentials server-only.
+
+==================================================
+PHASE 3 — MONEY REPRESENTATION
+==================================================
+
+Inspect how money is currently represented.
+
+Do NOT blindly migrate the entire database.
+
+Determine the safest migration strategy based on the current schema.
+
+The target should avoid floating-point financial calculations.
+
+For NGN, a sensible representation is integer Kobo.
+
+For example:
+
+₦100,000
+=
+10,000,000 Kobo
+
+Financial calculations should use integer-safe arithmetic.
+
+If the existing schema already uses a safe NUMERIC/DECIMAL representation correctly, do not migrate unnecessarily.
+
+Create clear conversion utilities if needed.
+
+==================================================
+PHASE 4 — AUTHENTICATION AND USER ISOLATION
+==================================================
+
+This is one of the highest-priority changes.
+
+Never trust:
+
+userId
+
+coming from:
+
+- request body
+- query parameters
+- client state
+- localStorage
+
+for protected financial operations.
+
+Derive the authenticated user from the existing server-side authentication/session mechanism.
+
+Create a centralized authentication resolver if the project does not already have one.
+
+Every protected resource must enforce ownership.
+
+For example:
+
+SELECT *
+FROM bills
+WHERE id = $billId
+AND user_id = $authenticatedUserId;
+
+The same principle applies to:
+
+- accounts
+- transactions
+- transfers
+- bills
+- goals
+- missions
+- gamification
+- onboarding/placement
+
+A user must never be able to manipulate another user's data by changing an ID.
+
+==================================================
+PHASE 5 — ATOMIC FINANCIAL OPERATIONS
+==================================================
+
+This is extremely important.
+
+Financial mutations must be atomic.
+
+For:
+
+- add money
+- transfer
+- bill payment
+- goal contribution
+
+use PostgreSQL transactions where appropriate.
+
+Conceptually:
+
+BEGIN
+
+validate
+authenticate
+authorize
+
+lock relevant account row
+
+check balance
+
+update balance
+
+create transaction/ledger record
+
+update related domain state
+
+update gamification/event state
+
+COMMIT
+
+If anything fails:
+
+ROLLBACK
+
+Prevent:
+
+- double spending
+- partial updates
+- balance inconsistencies
+- duplicate charges
+- duplicate rewards
+
+Use row-level locking where required.
+
+Do not introduce a complicated financial system if the existing demo only requires a simple reliable ledger.
+
+==================================================
+PHASE 6 — REMOVE FAKE DATA
+==================================================
+
+This is a core product requirement.
+
+New users should NOT automatically receive fake:
+
+- balance
+- transactions
+- bills
+- goals
+- mission progress
+- XP
+- streaks
+
+Users must create their own state through actual actions.
+
+New user:
+
+balance = 0
+
+transactions = empty
+
+bills = empty
+
+goals = empty
+
+progress = based on actual actions
+
+Use useful empty states in the UI.
+
+==================================================
+PHASE 7 — ADD MONEY
+==================================================
+
+The app is a banking DEMO.
+
+Users need to be able to add simulated money.
+
+This is NOT a real payment gateway.
+
+When the user adds money:
+
+1. Authenticate user
+2. Validate amount
+3. Update account
+4. Create transaction/ledger record
+5. Trigger appropriate gamification event
+6. Commit atomically
+7. Return updated state
+
+Do not simply update a React variable.
+
+==================================================
+PHASE 8 — TRANSFERS
+==================================================
+
+Preserve existing transfer functionality.
+
+If it is currently broken or missing from the dashboard, restore it.
+
+Transfers should:
+
+- authenticate sender
+- validate recipient
+- validate amount
+- verify sufficient balance
+- verify recipient
+- update sender/receiver atomically
+- create appropriate transaction records
+- prevent duplicate transfers
+- maintain an audit trail
+
+Do not remove this feature.
+
+==================================================
+PHASE 9 — BILLS
+==================================================
+
+Bills must be user-created.
+
+Do NOT pre-populate new users with fake bills.
+
+Categories should remain manageable:
+
+- Electricity
+- Airtime/Data
+- Internet
+- Cable TV
+- Water
+- Other
+
+A bill should contain appropriate:
+
+- title
+- category
+- amount
+- due date
+- recurrence
+- status
+- user ownership
+
+Support:
+
+- one-time bills
+- recurring bills
+
+==================================================
+PHASE 10 — BILL PAYMENT
+==================================================
+
+Paying a bill must be a real backend mutation.
+
+Flow:
+
+authenticate
+↓
+validate
+↓
+verify ownership
+↓
+check balance
+↓
+lock account
+↓
+deduct balance
+↓
+create transaction
+↓
+mark bill paid
+↓
+trigger gamification
+↓
+create next recurring bill if necessary
+↓
+commit
+
+Prevent duplicate payment.
+
+If the payment request is retried, it must not charge the user twice.
+
+==================================================

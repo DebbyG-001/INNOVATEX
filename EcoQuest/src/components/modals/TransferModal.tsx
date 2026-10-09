@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { formatNaira } from '../../lib/formatters';
 
 export const TransferModal: React.FC = () => {
-  const { closeModal, accounts, simulateTransfer, openModal } = useApp();
+  const { closeModal, accounts, simulateTransfer, openModal, showToast } = useApp();
   
   const [sourceAccountId, setSourceAccountId] = useState<number | string>('');
   const selectedAccount = accounts.find((a) => String(a.id) === String(sourceAccountId));
@@ -52,6 +52,7 @@ export const TransferModal: React.FC = () => {
       const res = await simulateTransfer(sourceAccountId, recipient, bank, amount);
       if (res.success) {
         closeModal();
+        showToast(`🎉 Nice move! You just transferred ₦${amount.toLocaleString()}`, 'success');
         openModal('transaction_receipt', res.transaction);
       } else {
         setError('Transfer failed: Please provide the source account and destination account number.');

@@ -13,7 +13,7 @@ class Account(Base):
     account_number = Column(String(50), nullable=False)
     account_type = Column(String(50), default="savings")  # savings, current, flex
     name = Column(String(100), nullable=False)
-    balance = Column(Float, default=0.0)
+    balance = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Relationships

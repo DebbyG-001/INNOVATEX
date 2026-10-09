@@ -1,19 +1,17 @@
 import React from 'react';
 import {
   ArrowLeftRight,
-  Compass,
-  CreditCard,
-  HandCoins,
-  LayoutDashboard,
-  LogOut,
+  BookOpen,
   PieChart,
+  Target,
+  Trophy,
+  Zap,
+  Star,
+  Users,
+  Wallet,
+  LayoutDashboard,
   Settings,
   Sparkles,
-  Star,
-  Target,
-  TrendingUp,
-  Trophy,
-  Wallet,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Logo } from '../common/Logo';
@@ -29,6 +27,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'accounts', label: 'Accounts', icon: Wallet },
+    { id: 'ajo', label: 'Ajo Savings', icon: Users },
+    { id: 'budget', label: 'Budget', icon: PieChart },
+    { id: 'utilities', label: 'Utilities', icon: Zap },
     { id: 'transactions', label: 'Transactions', icon: ArrowLeftRight },
     { id: 'goals', label: 'Savings Goals', icon: Target },
     {
@@ -37,16 +38,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       icon: Star,
       badge: '3',
     },
-    { id: 'challenges', label: 'Challenges', icon: Trophy },
+    { id: 'learn', label: 'Financial IQ', icon: BookOpen },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
-  const comingSoonItems = [
-    { label: 'Budget Tracker', icon: PieChart },
-    { label: 'Cards', icon: CreditCard },
-    { label: 'Loans', icon: HandCoins },
-    { label: 'Investments', icon: TrendingUp },
-  ];
+  const comingSoonItems: any[] = [];
 
   return (
     <aside
@@ -97,47 +93,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             );
           })}
 
-          {/* Polished Coming Soon section */}
-          <div className="pt-4 pb-1">
-            <div className="px-3.5 pb-2 text-[10px] font-bold uppercase tracking-wider text-white/40">
-              Coming Soon
-            </div>
-
-            <div className="space-y-0.5">
-              {comingSoonItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div
-                    key={item.label}
-                    aria-disabled="true"
-                    className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs text-white/35 cursor-not-allowed select-none"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-4 h-4 text-white/30" />
-                      <span>{item.label}</span>
+          {comingSoonItems.length > 0 && (
+            <div className="pt-4 pb-1">
+              <div className="px-3.5 pb-2 text-[10px] font-bold uppercase tracking-wider text-white/40">
+                Coming Soon
+              </div>
+              <div className="space-y-0.5">
+                {comingSoonItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={item.label}
+                      aria-disabled="true"
+                      className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs text-white/35 cursor-not-allowed select-none"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-4 h-4 text-white/30" />
+                        <span>{item.label}</span>
+                      </div>
+                      <span className="text-[9px] font-semibold tracking-wider uppercase px-1.5 py-0.5 bg-white/5 rounded text-white/40 border border-white/10">
+                        Soon
+                      </span>
                     </div>
-                    <span className="text-[9px] font-semibold tracking-wider uppercase px-1.5 py-0.5 bg-white/5 rounded text-white/40 border border-white/10">
-                      Soon
-                    </span>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-
-          {/* Logout button */}
-          <div className="pt-2">
-            <button
-              onClick={() => {
-                if (onClose) onClose();
-                logout();
-              }}
-              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-white/70 hover:text-[#EF4444] hover:bg-white/5 transition-colors cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Log Out</span>
-            </button>
-          </div>
+          )}
         </nav>
       </div>
 

@@ -34,5 +34,7 @@ def get_me(user: User = Depends(get_current_user)):
         financial_score=user.financial_score or 2,
         monthly_target=user.monthly_target or 30000,
         has_emergency_savings=user.has_emergency_savings,
+        active_accounts_count=user.active_accounts_count or 2,
+        digital_usage=user.digital_usage or "moderate",
         explanation=explanation,
     )

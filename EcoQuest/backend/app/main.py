@@ -13,6 +13,8 @@ from app.routes import (
     savings_router,
     transactions_router,
     users_router,
+    bills_router,
+    budget_router,
 )
 from app.services.seed import seed_database
 
@@ -66,6 +68,8 @@ app.include_router(goals_router)
 app.include_router(savings_router)
 app.include_router(gamification_router)
 app.include_router(onboarding_router)
+app.include_router(bills_router)
+app.include_router(budget_router)
 
 
 @app.get("/api/health")

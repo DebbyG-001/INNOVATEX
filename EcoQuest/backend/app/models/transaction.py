@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Index
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -12,7 +12,7 @@ class Transaction(Base):
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False)
     type = Column(String(20), nullable=False)  # credit or debit
     action_type = Column(String(50), nullable=False)  # transfer, bill_payment, airtime, saving_transfer, money_received, funding
-    amount = Column(Float, nullable=False)
+    amount = Column(Integer, nullable=False)
     description = Column(String(255), nullable=False)
     recipient = Column(String(255), nullable=True)
     reference = Column(String(100), unique=True, index=True, nullable=False)
@@ -23,3 +23,7 @@ class Transaction(Base):
     # Relationships
     user = relationship("User", back_populates="transactions")
     account = relationship("Account", back_populates="transactions")
+
+    __table_args__ = (
+        Index("ix_transaction_user_id_created_at", "user_id", "created_at"),
+    )

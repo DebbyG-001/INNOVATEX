@@ -11,6 +11,7 @@ import {
   User,
   Wallet,
   X,
+  BookOpen,
 } from 'lucide-react';
 import { LandingPage } from './components/auth/LandingPage';
 import { LoginScreen } from './components/auth/LoginScreen';
@@ -21,18 +22,55 @@ import { ModalRoot } from './components/modals/ModalRoot';
 import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
 import { AccountsView } from './components/views/AccountsView';
 import { AchievementsView } from './components/views/AchievementsView';
-import { ChallengesView } from './components/views/ChallengesView';
-import { DashboardView } from './components/views/DashboardView';
-import { GoalsView } from './components/views/GoalsView';
 import { ProfileView } from './components/views/ProfileView';
 import { RewardsView } from './components/views/RewardsView';
 import { SettingsView } from './components/views/SettingsView';
 import { TransactionsView } from './components/views/TransactionsView';
+import { DashboardView } from './components/views/DashboardView';
+import { GoalsView } from './components/views/GoalsView';
+import { AjoView } from './components/views/AjoView';
+import { BudgetView } from './components/views/BudgetView';
+import { FinancialIQView } from './components/views/FinancialIQView';
+import { UtilitiesView } from './components/views/UtilitiesView';
 import { AppProvider, useApp } from './context/AppContext';
+import { WelcomeAnimation } from './components/WelcomeAnimation';
+
+const ToastManager = () => {
+  const { toast } = useApp();
+  
+  if (!toast) return null;
+
+  const bgColors = {
+    success: 'bg-[#22C55E]',
+    error: 'bg-[#EF4444]',
+    info: 'bg-[#0047AB]',
+    reward: 'bg-[#9333EA]',
+  };
+
+  return (
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-top-4 duration-300">
+      <div className={`${bgColors[toast.type]} text-white px-6 py-3 rounded-full shadow-lg font-bold text-sm flex items-center gap-2`}>
+        {toast.type === 'reward' && '🎉'}
+        {toast.type === 'success' && '✅'}
+        {toast.message}
+      </div>
+    </div>
+  );
+};
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, activeTab, setActiveTab } = useApp();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [hasShownWelcome, setHasShownWelcome] = useState(false);
+
+  React.useEffect(() => {
+    if (isAuthenticated && !hasShownWelcome) {
+      setShowWelcome(true);
+      setHasShownWelcome(true);
+    }
+  }, [isAuthenticated, hasShownWelcome]);
 
   // Authentication & Entry Flow
   // Requirement 3: Landing Page → Create Account → Onboarding → Dashboard
@@ -72,8 +110,15 @@ const AppContent: React.FC = () => {
         return <TransactionsView />;
       case 'goals':
         return <GoalsView />;
-      case 'challenges':
-        return <ChallengesView />;
+      case 'challenges': // Keep fallback
+      case 'learn':
+        return <FinancialIQView />;
+      case 'ajo':
+        return <AjoView />;
+      case 'budget':
+        return <BudgetView />;
+      case 'utilities':
+        return <UtilitiesView />;
       case 'rewards':
         return <RewardsView />;
       case 'profile':
@@ -104,9 +149,9 @@ const AppContent: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar with mobile hamburger button */}
-        <div className="flex items-center">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+        {/* Top bar with mobile hamburger button - Sticky */}
+        <div className="sticky top-0 z-30 bg-[#F4F7FC]/90 backdrop-blur-md flex items-center border-b border-[#E3E9F4] shadow-sm">
           <button
             onClick={() => setIsMobileSidebarOpen(true)}
             className="lg:hidden p-4 text-[#071A3F] hover:bg-[#EAF1FF] transition-colors"
@@ -120,7 +165,7 @@ const AppContent: React.FC = () => {
         </div>
 
         {/* Viewport Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-24 lg:pb-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-24 lg:pb-8 overflow-y-auto">
           {renderActiveView()}
         </main>
       </div>
@@ -161,13 +206,13 @@ const AppContent: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setActiveTab('challenges')}
+          onClick={() => setActiveTab('learn')}
           className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl text-[10px] font-bold ${
-            activeTab === 'challenges' ? 'text-[#0047AB]' : 'text-[#5B6B8C]'
+            activeTab === 'learn' ? 'text-[#0047AB]' : 'text-[#5B6B8C]'
           }`}
         >
-          <Trophy className="w-5 h-5" />
-          <span>Challenges</span>
+          <BookOpen className="w-5 h-5" />
+          <span>Learn</span>
         </button>
 
         <button
@@ -183,6 +228,9 @@ const AppContent: React.FC = () => {
 
       {/* Global Modals */}
       <ModalRoot />
+      <ToastManager />
+      
+      {showWelcome && <WelcomeAnimation onComplete={() => setShowWelcome(false)} />}
     </div>
   );
 };

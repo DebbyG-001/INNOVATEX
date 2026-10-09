@@ -14,11 +14,11 @@ import {
 } from '../types';
 
 export const XP_THRESHOLDS: { name: string; code: LevelName; min: number; next: number }[] = [
-  { name: 'Starter', code: 'starter', min: 0, next: 500 },
-  { name: 'Builder', code: 'builder', min: 500, next: 1500 },
-  { name: 'Achiever', code: 'achiever', min: 1500, next: 3500 },
-  { name: 'Champion', code: 'champion', min: 3500, next: 7000 },
-  { name: 'Master', code: 'master', min: 7000, next: 10000 },
+  { name: 'Starter', code: 'starter', min: 0, next: 250 },
+  { name: 'Builder', code: 'builder', min: 250, next: 1000 },
+  { name: 'Achiever', code: 'achiever', min: 1000, next: 5000 },
+  { name: 'Champion', code: 'champion', min: 5000, next: 15000 },
+  { name: 'Master', code: 'master', min: 15000, next: 50000 },
 ];
 
 export function calculateLevel(xp: number): LevelInfo {

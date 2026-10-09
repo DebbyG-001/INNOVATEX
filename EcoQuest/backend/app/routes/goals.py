@@ -65,13 +65,7 @@ def update_goal(
     if not goal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found")
 
-    if data.current_amount is not None:
-        goal.current_amount = data.current_amount
-        goal.required_monthly = calculate_required_monthly(
-            goal.target_amount, goal.current_amount, goal.duration
-        )
-        if goal.current_amount >= goal.target_amount:
-            goal.status = "completed"
+
 
     if data.target_amount is not None:
         goal.target_amount = data.target_amount

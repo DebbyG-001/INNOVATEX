@@ -17,6 +17,8 @@ class UserResponse(BaseModel):
     financial_score: int = 2
     monthly_target: int = 30000
     has_emergency_savings: bool = False
+    active_accounts_count: int = 2
+    digital_usage: Optional[str] = "moderate"
     explanation: Optional[Dict[str, List[str]]] = None
 
     class Config:
