@@ -1,5 +1,6 @@
 import os
 from contextlib import asynccontextmanager
+from sqlalchemy import inspect, text
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -24,6 +25,23 @@ async def lifespan(app: FastAPI):
     try:
         # Create tables in PostgreSQL
         Base.metadata.create_all(bind=engine)
+
+        # Safe automatic schema patch for production Render compatibility
+        try:
+            inspector = inspect(engine)
+            if "users" in inspector.get_table_names():
+                existing_columns = [col["name"] for col in inspector.get_columns("users")]
+                with engine.begin() as conn:
+                    if "active_accounts_count" not in existing_columns:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN active_accounts_count INTEGER DEFAULT 2"))
+                        print("Schema Patch: Successfully added active_accounts_count to users.")
+                    if "digital_usage" not in existing_columns:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN digital_usage VARCHAR(50) DEFAULT 'moderate'"))
+                        print("Schema Patch: Successfully added digital_usage to users.")
+        except Exception as patch_error:
+            print(f"CRITICAL DB ERROR: Failed to apply automatic schema patch: {patch_error}")
+            raise  # Do not silently report success if patching fails; crash startup cleanly
+
 
         # Seed initial demo persona and standard achievements
         db = SessionLocal()
